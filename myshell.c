@@ -117,7 +117,7 @@ char **dash_split_line(char *line)
 
 			if (!tokens)
 			{
-				bufsize += DASH_TOK_BUFSIZE;
+				buffersize += DASH_TOK_BUFSIZE;
 				tokens = realloc(tokens, buffersize * sizeof(char *));
 			}
 		}
