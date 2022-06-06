@@ -4,35 +4,29 @@
 #include <stdio.h>
 #include <string.h>
 
-void dash_loop();
-char *dash_read_line();
-char **dash_split_line();
-int dash_launch(char **args);
-int dash_execute(char **args);
+void dash_loop();			   // called by the main
+int dash_execute(char **args); // called by the loop
+char *dash_read_line();		   // reading the line from the user
+char **dash_split_line();	   // parsing the line into cmd and arguments
+int dash_launch(char **args);  // called by execute
+int dash_cd(char **args);	   // built-in command
+int dash_help(char **args);	   // built-in command
+int dash_exit(char **args);	   // built-in command
 
-//  Function Declarations for builtin shell commands:
-
-int dash_cd(char **args);
-int dash_help(char **args);
-int dash_exit(char **args);
-
+// main function
 int main(int argc, char **argv)
 {
-	// Load config files, if any.
 
-	// Run command loop.
+	// the shell loop
 	dash_loop();
-
-	// Perform any shutdown/cleanup.
-
 	return EXIT_SUCCESS;
 }
 
 void dash_loop(void)
 {
-	char *line;
-	char **args;
-	int status;
+	char *line;	 // array of characters
+	char **args; // array of character pointers
+	int status;	 // status returned by dash_execute()
 
 	do
 	{
@@ -56,6 +50,7 @@ char *dash_read_line()
 
 	if (!buffer)
 	{
+		// if buffer allocation fails
 		fprintf(stderr, "dash : allocation error\n");
 		exit(EXIT_FAILURE);
 	}
@@ -75,6 +70,8 @@ char *dash_read_line()
 		}
 
 		position++;
+
+		// if buffer is full, reallocate
 		if (position >= buffersize)
 		{
 			buffersize += DASH_RL_BUFSIZE;
@@ -137,7 +134,7 @@ int dash_launch(char **args)
 	if (pid == 0)
 	{
 		// Child process
-		if (execvp(args[0], args) == -1)
+		if (execvp(args[0], args) == -1) // execvp() returns -1 if it fails else the process is called with the args
 		{
 			perror("dash");
 		}
@@ -153,34 +150,32 @@ int dash_launch(char **args)
 		// Parent process
 		do
 		{
-			wpid = waitpid(pid, &status, WUNTRACED);
-		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+			wpid = waitpid(pid, &status, WUNTRACED);		  // Wait for child process to terminate
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status)); // WIFEXITED AND WIFSIGNALED are the checks for EXITED OR SIGNALED processes
 	}
 
 	return 1;
 }
 
-/*
-  List of builtin commands, followed by their corresponding functions.
- */
+// builtin_str is an array of builtin commands
 char *builtin_str[] = {
 	"cd",
 	"help",
 	"exit"};
 
+// This function returns the index of the command in the builtin_str array
 int (*builtin_func[])(char **) = {
 	&dash_cd,
 	&dash_help,
 	&dash_exit};
 
+// This function returns the number of builtin_str commands
 int dash_num_builtins()
 {
 	return sizeof(builtin_str) / sizeof(char *);
 }
 
-/*
-  Builtin function implementations.
-*/
+// built_in command implementations
 int dash_cd(char **args)
 {
 	if (args[1] == NULL)
@@ -189,7 +184,7 @@ int dash_cd(char **args)
 	}
 	else
 	{
-		if (chdir(args[1]) != 0)
+		if (chdir(args[1]) != 0) // chrdir() function is used for the implementation of the cd command
 		{
 			perror("dash");
 		}
@@ -199,6 +194,7 @@ int dash_cd(char **args)
 
 int dash_help(char **args)
 {
+	// Nice display for the shell's help
 	int i;
 	printf("DASH - DEAD AGAIN SHELL\n");
 	printf("Type program names and arguments, and hit enter.\n");
@@ -208,20 +204,18 @@ int dash_help(char **args)
 	{
 		printf("  %s\n", builtin_str[i]);
 	}
-
-	printf("Use the man command for information on other programs.\n");
 	return 1;
 }
 
 int dash_exit(char **args)
 {
+	// signal the exit of the terminal
 	return 0;
 }
 
 int dash_execute(char **args)
 {
 	int i;
-
 	if (args[0] == NULL)
 	{
 		// An empty command was entered.
@@ -230,11 +224,13 @@ int dash_execute(char **args)
 
 	for (i = 0; i < dash_num_builtins(); i++)
 	{
+		// Check if the command is a builtin command
 		if (strcmp(args[0], builtin_str[i]) == 0)
 		{
+			// Call the built_in implementation
 			return (*builtin_func[i])(args);
 		}
 	}
-
+	// Execute the command through fork()
 	return dash_launch(args);
 }
